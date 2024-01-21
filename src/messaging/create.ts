@@ -1,12 +1,20 @@
-'use strict';
+import meta from '../meta';
+import plugins from '../plugins';
+import db from '../database';
+import user from '../user';
 
-const meta = require('../meta');
-const plugins = require('../plugins');
-const db = require('../database');
-const user = require('../user');
+interface Message {
+    uid: string;
+    roomId: number;
+    content: string;
+    timestamp: number;
+    ip: string;
+    system: string;
+  }
 
-module.exports = function (Messaging) {
-    Messaging.sendMessage = async (data) => {
+
+export default function create(Messaging) {
+    Messaging.sendMessage = async (data: Message) => {
         await Messaging.checkContent(data.content);
         const inRoom = await Messaging.isUserInRoom(data.uid, data.roomId);
         if (!inRoom) {
@@ -16,7 +24,7 @@ module.exports = function (Messaging) {
         return await Messaging.addMessage(data);
     };
 
-    Messaging.checkContent = async (content) => {
+    Messaging.checkContent = async (content: string) => {
         if (!content) {
             throw new Error('[[error:invalid-chat-message]]');
         }
@@ -33,9 +41,13 @@ module.exports = function (Messaging) {
         }
     };
 
-    Messaging.addMessage = async (data) => {
+    Messaging.addMessage = async (data: Message) => {
         const mid = await db.incrObjectField('global', 'nextMid');
         const timestamp = data.timestamp || Date.now();
+        let dataIP = '';
+        if (data.ip) {
+            dataIP = data.ip;
+        }
         let message = {
             content: String(data.content),
             timestamp: timestamp,
@@ -43,16 +55,21 @@ module.exports = function (Messaging) {
             roomId: data.roomId,
             deleted: 0,
             system: data.system || 0,
+            ip: dataIP,
         };
 
-        if (data.ip) {
-            message.ip = data.ip;
-        }
-
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         message = await plugins.hooks.fire('filter:messaging.save', message);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         await db.setObject(`message:${mid}`, message);
         const isNewSet = await Messaging.isNewSet(data.uid, data.roomId, timestamp);
-        let uids = await db.getSortedSetRange(`chat:room:${data.roomId}:uids`, 0, -1);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        let uids: string[] = await db.getSortedSetRange(`chat:room:${data.roomId}:uids`, 0, -1);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         uids = await user.blocks.filterUids(data.uid, uids);
 
         await Promise.all([
@@ -69,11 +86,13 @@ module.exports = function (Messaging) {
         messages[0].newSet = isNewSet;
         messages[0].mid = mid;
         messages[0].roomId = data.roomId;
-        plugins.hooks.fire('action:messaging.save', { message: messages[0], data: data });
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        await plugins.hooks.fire('action:messaging.save', { message: messages[0], data: data });
         return messages[0];
     };
 
-    Messaging.addSystemMessage = async (content, uid, roomId) => {
+    Messaging.addSystemMessage = async (content: string, uid: string, roomId: number) => {
         const message = await Messaging.addMessage({
             content: content,
             uid: uid,
@@ -83,20 +102,24 @@ module.exports = function (Messaging) {
         Messaging.notifyUsersInRoom(uid, roomId, message);
     };
 
-    Messaging.addRoomToUsers = async (roomId, uids, timestamp) => {
+    Messaging.addRoomToUsers = async (roomId: number, uids: string[], timestamp: number) => {
         if (!uids.length) {
             return;
         }
 
         const keys = uids.map(uid => `uid:${uid}:chat:rooms`);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         await db.sortedSetsAdd(keys, timestamp, roomId);
     };
 
-    Messaging.addMessageToUsers = async (roomId, uids, mid, timestamp) => {
+    Messaging.addMessageToUsers = async (roomId: number, uids: string[], mid: number, timestamp: number) => {
         if (!uids.length) {
             return;
         }
         const keys = uids.map(uid => `uid:${uid}:chat:room:${roomId}:mids`);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         await db.sortedSetsAdd(keys, timestamp, mid);
     };
-};
+}
