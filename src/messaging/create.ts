@@ -2,30 +2,43 @@ import meta from '../meta';
 import plugins from '../plugins';
 import db from '../database';
 import user from '../user';
-import Messaging from '.';
 import { MessageObject } from '../types';
 
 interface Message {
     uid: string;
     roomId: number;
     content: string;
-    timestamp: number;
-    ip: string;
-    system: string;
+    timestamp?: number;
+    ip?: string;
+    system: number;
   }
 
+interface MessagingType {
+    sendMessage: (data: Message) => Promise<MessageObject>;
+    checkContent: (content: string) => Promise<void>;
+    addMessage: (data: Message) => Promise<MessageObject>;
+    addSystemMessage: (content: string, uid: string, roomId: number) => Promise<void>;
+    addRoomToUsers: (roomId: number, uids: string[], timestamp: number) => Promise<void>;
+    addMessageToUsers: (roomId: number, uids: string[], mid: number, timestamp: number) => Promise<void>;
 
-export default function () {
-    Messaging.sendMessage = async (data: Message): Promise<void> => {
-        await Messaging.checkContent(data.content) as Promise<void>;
+    isUserInRoom: (uid: string, roomId: number) => Promise<boolean>
+    isNewSet: (uid: string, roomId: number, timestamp: number) => Promise<boolean>;
+    markUnread: (uids: string[], roomId: number) => Promise<void>;
+    getMessagesData: (mid: number[], uid: string, roomId: number, bool: boolean) => Promise<MessageObject[]>;
+    notifyUsersInRoom: (uid: string, roomId: number, message: MessageObject) => void;
+}
+
+export default function (Messaging: MessagingType) {
+    Messaging.sendMessage = async (data: Message): Promise<MessageObject> => {
+        await Messaging.checkContent(data.content);
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const inRoom = await Messaging.isUserInRoom(data.uid, data.roomId) as boolean;
+        const inRoom = await Messaging.isUserInRoom(data.uid, data.roomId);
         if (!inRoom) {
             throw new Error('[[error:not-allowed]]');
         }
 
-        return await Messaging.addMessage(data) as Promise<void>;
+        return await Messaging.addMessage(data);
     };
 
     Messaging.checkContent = async (content: string): Promise<void> => {
@@ -94,7 +107,7 @@ export default function () {
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const messages: MessageObject[] =
-            await Messaging.getMessagesData([mid], data.uid, data.roomId, true) as MessageObject[];
+            await Messaging.getMessagesData([mid], data.uid, data.roomId, true);
         if (!messages || !messages[0]) {
             return null;
         }
@@ -114,7 +127,7 @@ export default function () {
             uid: uid,
             roomId: roomId,
             system: 1,
-        }) as Promise<void>;
+        });
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         Messaging.notifyUsersInRoom(uid, roomId, message);
