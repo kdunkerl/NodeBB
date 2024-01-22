@@ -16,31 +16,40 @@ const meta_1 = __importDefault(require("../meta"));
 const plugins_1 = __importDefault(require("../plugins"));
 const database_1 = __importDefault(require("../database"));
 const user_1 = __importDefault(require("../user"));
-function create(Messaging) {
-    Messaging.sendMessage = (data) => __awaiter(this, void 0, void 0, function* () {
-        yield Messaging.checkContent(data.content);
-        const inRoom = yield Messaging.isUserInRoom(data.uid, data.roomId);
+const _1 = __importDefault(require("."));
+function default_1() {
+    _1.default.sendMessage = (data) => __awaiter(this, void 0, void 0, function* () {
+        yield _1.default.checkContent(data.content);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        const inRoom = yield _1.default.isUserInRoom(data.uid, data.roomId);
         if (!inRoom) {
             throw new Error('[[error:not-allowed]]');
         }
-        return yield Messaging.addMessage(data);
+        return yield _1.default.addMessage(data);
     });
-    Messaging.checkContent = (content) => __awaiter(this, void 0, void 0, function* () {
+    _1.default.checkContent = (content) => __awaiter(this, void 0, void 0, function* () {
         if (!content) {
             throw new Error('[[error:invalid-chat-message]]');
         }
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const maximumChatMessageLength = meta_1.default.config.maximumChatMessageLength || 1000;
         content = String(content).trim();
         let { length } = content;
-        ({ content, length } = yield plugins_1.default.hooks.fire('filter:messaging.checkContent', { content, length }));
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        ({ content, length } = (yield plugins_1.default.hooks.fire('filter:messaging.checkContent', { content, length })));
         if (!content) {
             throw new Error('[[error:invalid-chat-message]]');
         }
-        if (length > maximumChatMessageLength) {
+        if (maximumChatMessageLength && length > maximumChatMessageLength) {
             throw new Error(`[[error:chat-message-too-long, ${maximumChatMessageLength}]]`);
         }
     });
-    Messaging.addMessage = (data) => __awaiter(this, void 0, void 0, function* () {
+    _1.default.addMessage = (data) => __awaiter(this, void 0, void 0, function* () {
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const mid = yield database_1.default.incrObjectField('global', 'nextMid');
         const timestamp = data.timestamp || Date.now();
         let dataIP = '';
@@ -58,44 +67,52 @@ function create(Messaging) {
         };
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        message = yield plugins_1.default.hooks.fire('filter:messaging.save', message);
-        // The next line calls a function in a module that has not been updated to TS yet
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        yield database_1.default.setObject(`message:${mid}`, message);
-        const isNewSet = yield Messaging.isNewSet(data.uid, data.roomId, timestamp);
+        message = (yield plugins_1.default.hooks.fire('filter:messaging.save', message));
+        if (mid) {
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            yield database_1.default.setObject(`message:${mid}`, message);
+        }
+        const isNewSet = yield _1.default.isNewSet(data.uid, data.roomId, timestamp);
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         let uids = yield database_1.default.getSortedSetRange(`chat:room:${data.roomId}:uids`, 0, -1);
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        uids = yield user_1.default.blocks.filterUids(data.uid, uids);
+        uids = (yield user_1.default.blocks.filterUids(data.uid, uids));
         yield Promise.all([
-            Messaging.addRoomToUsers(data.roomId, uids, timestamp),
-            Messaging.addMessageToUsers(data.roomId, uids, mid, timestamp),
-            Messaging.markUnread(uids.filter(uid => uid !== String(data.uid)), data.roomId),
+            _1.default.addRoomToUsers(data.roomId, uids, timestamp),
+            _1.default.addMessageToUsers(data.roomId, uids, mid, timestamp),
+            // The next line calls a function in a module that has not been updated to TS yet
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            _1.default.markUnread(uids.filter(uid => uid !== String(data.uid)), data.roomId),
         ]);
-        const messages = yield Messaging.getMessagesData([mid], data.uid, data.roomId, true);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        const messages = yield _1.default.getMessagesData([mid], data.uid, data.roomId, true);
         if (!messages || !messages[0]) {
             return null;
         }
         messages[0].newSet = isNewSet;
-        messages[0].mid = mid;
+        messages[0].messageId = mid;
         messages[0].roomId = data.roomId;
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         yield plugins_1.default.hooks.fire('action:messaging.save', { message: messages[0], data: data });
         return messages[0];
     });
-    Messaging.addSystemMessage = (content, uid, roomId) => __awaiter(this, void 0, void 0, function* () {
-        const message = yield Messaging.addMessage({
+    _1.default.addSystemMessage = (content, uid, roomId) => __awaiter(this, void 0, void 0, function* () {
+        const message = yield _1.default.addMessage({
             content: content,
             uid: uid,
             roomId: roomId,
             system: 1,
         });
-        Messaging.notifyUsersInRoom(uid, roomId, message);
+        // The next line calls a function in a module that has not been updated to TS yet
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+        _1.default.notifyUsersInRoom(uid, roomId, message);
     });
-    Messaging.addRoomToUsers = (roomId, uids, timestamp) => __awaiter(this, void 0, void 0, function* () {
+    _1.default.addRoomToUsers = (roomId, uids, timestamp) => __awaiter(this, void 0, void 0, function* () {
         if (!uids.length) {
             return;
         }
@@ -104,7 +121,7 @@ function create(Messaging) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         yield database_1.default.sortedSetsAdd(keys, timestamp, roomId);
     });
-    Messaging.addMessageToUsers = (roomId, uids, mid, timestamp) => __awaiter(this, void 0, void 0, function* () {
+    _1.default.addMessageToUsers = (roomId, uids, mid, timestamp) => __awaiter(this, void 0, void 0, function* () {
         if (!uids.length) {
             return;
         }
@@ -114,4 +131,4 @@ function create(Messaging) {
         yield database_1.default.sortedSetsAdd(keys, timestamp, mid);
     });
 }
-exports.default = create;
+exports.default = default_1;
