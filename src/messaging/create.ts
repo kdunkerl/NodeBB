@@ -1,8 +1,7 @@
-import meta from '../meta';
-import plugins from '../plugins';
-import db from '../database';
-import user from '../user';
-import { MessageObject } from '../types';
+import meta = require('../meta');
+import plugins = require('../plugins');
+import db = require('../database');
+import user = require('../user');
 
 interface Message {
     uid: string;
@@ -10,13 +9,15 @@ interface Message {
     content: string;
     timestamp?: number;
     ip?: string;
-    system: number;
+    system?: number;
+    newSet? :boolean;
+    messageId?: number;
   }
 
 interface MessagingType {
-    sendMessage: (data: Message) => Promise<MessageObject>;
+    sendMessage: (data: Message) => Promise<Message>;
     checkContent: (content: string) => Promise<void>;
-    addMessage: (data: Message) => Promise<MessageObject>;
+    addMessage: (data: Message) => Promise<Message>;
     addSystemMessage: (content: string, uid: string, roomId: number) => Promise<void>;
     addRoomToUsers: (roomId: number, uids: string[], timestamp: number) => Promise<void>;
     addMessageToUsers: (roomId: number, uids: string[], mid: number, timestamp: number) => Promise<void>;
@@ -24,12 +25,12 @@ interface MessagingType {
     isUserInRoom: (uid: string, roomId: number) => Promise<boolean>
     isNewSet: (uid: string, roomId: number, timestamp: number) => Promise<boolean>;
     markUnread: (uids: string[], roomId: number) => Promise<void>;
-    getMessagesData: (mid: number[], uid: string, roomId: number, bool: boolean) => Promise<MessageObject[]>;
-    notifyUsersInRoom: (uid: string, roomId: number, message: MessageObject) => void;
+    getMessagesData: (mid: number[], uid: string, roomId: number, isNew: boolean) => Promise<Message[]>;
+    notifyUsersInRoom: (uid: string, roomId: number, message: Message) => void;
 }
 
-export default function (Messaging: MessagingType) {
-    Messaging.sendMessage = async (data: Message): Promise<MessageObject> => {
+module.exports = function (Messaging: MessagingType) {
+    Messaging.sendMessage = async (data: Message): Promise<Message> => {
         await Messaging.checkContent(data.content);
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
@@ -61,7 +62,7 @@ export default function (Messaging: MessagingType) {
         }
     };
 
-    Messaging.addMessage = async (data: Message): Promise<MessageObject> => {
+    Messaging.addMessage = async (data: Message): Promise<Message> => {
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         const mid: number = await db.incrObjectField('global', 'nextMid') as number;
@@ -106,7 +107,7 @@ export default function (Messaging: MessagingType) {
 
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        const messages: MessageObject[] =
+        const messages: Message[] =
             await Messaging.getMessagesData([mid], data.uid, data.roomId, true);
         if (!messages || !messages[0]) {
             return null;
@@ -154,4 +155,4 @@ export default function (Messaging: MessagingType) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         await db.sortedSetsAdd(keys, timestamp, mid);
     };
-}
+};
