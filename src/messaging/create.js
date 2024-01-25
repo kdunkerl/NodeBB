@@ -90,7 +90,7 @@ module.exports = function (Messaging) {
             return null;
         }
         messages[0].newSet = isNewSet;
-        messages[0].messageId = mid;
+        messages[0].mid = mid;
         messages[0].roomId = data.roomId;
         // The next line calls a function in a module that has not been updated to TS yet
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
